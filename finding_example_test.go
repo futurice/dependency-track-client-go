@@ -3,7 +3,7 @@ package dtrack_test
 import (
 	"context"
 
-	"github.com/DependencyTrack/client-go"
+	"github.com/futurice/dependency-track-client-go"
 	"github.com/google/uuid"
 )
 

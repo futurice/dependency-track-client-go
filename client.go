@@ -22,7 +22,7 @@ import (
 
 const (
 	DefaultTimeout   = 10 * time.Second
-	DefaultUserAgent = "github.com/DependencyTrack/client-go"
+	DefaultUserAgent = "github.com/futurice/dependency-track-client-go"
 )
 
 type contextKey string

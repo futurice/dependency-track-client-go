@@ -1,4 +1,4 @@
-module github.com/DependencyTrack/client-go
+module github.com/futurice/dependency-track-client-go
 
 go 1.19
 

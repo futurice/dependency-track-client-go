@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/DependencyTrack/client-go/notification"
+	"github.com/futurice/dependency-track-client-go/notification"
 )
 
 // This example demonstrates how to parse and process notifications.

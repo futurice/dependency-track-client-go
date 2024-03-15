@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/DependencyTrack/client-go"
+	"github.com/futurice/dependency-track-client-go"
 )
 
 // This example demonstrates how to upload a Bill of Materials and wait for its processing to complete.
