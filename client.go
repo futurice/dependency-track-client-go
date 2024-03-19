@@ -34,6 +34,7 @@ type Client struct {
 	debug      bool
 
 	About             AboutService
+	ACLMapping        ACLMappingService
 	Analysis          AnalysisService
 	BOM               BOMService
 	Component         ComponentService
@@ -81,6 +82,7 @@ func NewClient(baseURL string, options ...ClientOption) (*Client, error) {
 	}
 
 	client.About = AboutService{client: &client}
+	client.ACLMapping = ACLMappingService{client: &client}
 	client.Analysis = AnalysisService{client: &client}
 	client.BOM = BOMService{client: &client}
 	client.Component = ComponentService{client: &client}
