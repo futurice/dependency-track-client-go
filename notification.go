@@ -2,6 +2,7 @@ package dtrack
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -41,6 +42,36 @@ func (ps NotificationService) GetAllPublishers(ctx context.Context) (p []Notific
 	}
 
 	_, err = ps.client.doRequest(req, &p)
+	return
+}
+
+func (ps NotificationService) CreatePublisher(ctx context.Context, publisher NotificationPublisher) (r NotificationPublisher, err error) {
+	req, err := ps.client.newRequest(ctx, http.MethodPut, "/api/v1/notification/publisher", withBody(publisher))
+	if err != nil {
+		return
+	}
+
+	_, err = ps.client.doRequest(req, &r)
+	return
+}
+
+func (ps NotificationService) UpdatePublisher(ctx context.Context, publisher NotificationPublisher) (r NotificationPublisher, err error) {
+	req, err := ps.client.newRequest(ctx, http.MethodPost, "/api/v1/notification/publisher", withBody(publisher))
+	if err != nil {
+		return
+	}
+
+	_, err = ps.client.doRequest(req, &r)
+	return
+}
+
+func (ps NotificationService) DeletePublisher(ctx context.Context, ruleUuid uuid.UUID) (err error) {
+	req, err := ps.client.newRequest(ctx, http.MethodDelete, fmt.Sprintf("/api/v1/notification/publisher/%s", ruleUuid.String()))
+	if err != nil {
+		return
+	}
+
+	_, err = ps.client.doRequest(req, nil)
 	return
 }
 
