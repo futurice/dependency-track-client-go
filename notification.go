@@ -29,6 +29,7 @@ type NotificationRule struct {
 	NotifyChildren       bool                  `json:"notifyChildren"`
 	LogSuccessfulPublish bool                  `json:"logSuccessfulPublish"`
 	PublisherConfig      string                `json:"publisherConfig,omitempty"`
+	Projects             []Project             `json:"projects,omitempty"`
 }
 
 type NotificationService struct {
