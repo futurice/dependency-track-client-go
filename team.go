@@ -61,6 +61,28 @@ func (ts TeamService) GenerateAPIKey(ctx context.Context, teamUUID uuid.UUID) (k
 	return
 }
 
+func (ts TeamService) RegenerateAPIKey(ctx context.Context, oldAPIKey string) (string, error) {
+	req, err := ts.client.newRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/team/key/%s", oldAPIKey))
+	if err != nil {
+		return "", err
+	}
+
+	var newAPIKey APIKey
+	_, err = ts.client.doRequest(req, &newAPIKey)
+
+	return newAPIKey.Key, err
+}
+
+func (ts TeamService) DeleteAPIKey(ctx context.Context, apiKey string) (key string, err error) {
+	req, err := ts.client.newRequest(ctx, http.MethodDelete, fmt.Sprintf("/api/v1/team/key/%s", apiKey))
+	if err != nil {
+		return
+	}
+
+	_, err = ts.client.doRequest(req, nil)
+	return
+}
+
 func (ts TeamService) Create(ctx context.Context, team Team) (t Team, err error) {
 	req, err := ts.client.newRequest(ctx, http.MethodPut, "/api/v1/team", withBody(team))
 	if err != nil {
