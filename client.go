@@ -128,7 +128,7 @@ func (c Client) isServerVersionAtLeast(targetVersion string) bool {
 }
 
 func (c Client) assertServerVersionAtLeast(targetVersion string) error {
-	if c.isServerVersionAtLeast(targetVersion) {
+	if !c.isServerVersionAtLeast(targetVersion) {
 		return fmt.Errorf("server version must be at least %s, but is %s", targetVersion, c.about.Version)
 	}
 
