@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -62,6 +63,15 @@ func (ps ProjectService) GetAll(ctx context.Context, po PageOptions) (p Page[Pro
 	}
 
 	p.TotalCount = res.TotalCount
+	return
+}
+
+func (ps ProjectService) Latest(ctx context.Context, name string) (p Project, err error) {
+	req, err := ps.client.newRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v1/project/latest/%s", url.PathEscape(name)))
+	if err != nil {
+		return
+	}
+	_, err = ps.client.doRequest(req, &p)
 	return
 }
 
