@@ -8,41 +8,43 @@ import (
 	"github.com/google/uuid"
 )
 
-type ACLMapping struct {
-	Team    uuid.UUID `json:"team,omitempty"`
-	Project uuid.UUID `json:"project,omitempty"`
-}
-
-type ACLMappingService struct {
+type ACLService struct {
 	client *Client
 }
 
-func (as ACLMappingService) Get(ctx context.Context, teamUUID uuid.UUID) (mappings []Project, err error) {
-	req, err := as.client.newRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v1/acl/team/%s", teamUUID.String()))
-	if err != nil {
-		return
-	}
-
-	_, err = as.client.doRequest(req, &mappings)
-	return
+type ACLMappingRequest struct {
+	Team    uuid.UUID `json:"team"`
+	Project uuid.UUID `json:"project"`
 }
 
-func (as ACLMappingService) Create(ctx context.Context, mapping ACLMapping) (err error) {
+func (as ACLService) AddProjectMapping(ctx context.Context, mapping ACLMappingRequest) (err error) {
 	req, err := as.client.newRequest(ctx, http.MethodPut, "/api/v1/acl/mapping", withBody(mapping))
 	if err != nil {
 		return
 	}
-
 	_, err = as.client.doRequest(req, nil)
 	return
 }
 
-func (as ACLMappingService) Delete(ctx context.Context, mapping ACLMapping) (err error) {
-	req, err := as.client.newRequest(ctx, http.MethodDelete, fmt.Sprintf("/api/v1/acl/mapping/team/%s/project/%s", mapping.Team, mapping.Project))
+func (as ACLService) RemoveProjectMapping(ctx context.Context, team, project uuid.UUID) (err error) {
+	req, err := as.client.newRequest(ctx, http.MethodDelete, fmt.Sprintf("/api/v1/acl/mapping/team/%s/project/%s", team, project))
+	if err != nil {
+		return
+	}
+	_, err = as.client.doRequest(req, nil)
+	return
+}
+
+func (as ACLService) GetAllProjects(ctx context.Context, team uuid.UUID, po PageOptions) (p Page[Project], err error) {
+	req, err := as.client.newRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v1/acl/team/%s", team), withPageOptions(po))
+	if err != nil {
+		return
+	}
+	res, err := as.client.doRequest(req, &p.Items)
 	if err != nil {
 		return
 	}
 
-	_, err = as.client.doRequest(req, nil)
+	p.TotalCount = res.TotalCount
 	return
 }

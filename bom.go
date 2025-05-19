@@ -3,10 +3,11 @@ package dtrack
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	"net/http"
 	"net/url"
-
-	"github.com/google/uuid"
+	"strconv"
+	"strings"
 )
 
 type BOMService struct {
@@ -17,9 +18,11 @@ type BOMUploadRequest struct {
 	ProjectUUID    *uuid.UUID `json:"project,omitempty"`
 	ProjectName    string     `json:"projectName,omitempty"`
 	ProjectVersion string     `json:"projectVersion,omitempty"`
-	ParentUUID     *uuid.UUID `json:"parentUUID,omitempty"`    // Since v4.8.0
-	ParentName     string     `json:"parentName,omitempty"`    // Since v4.8.0
-	ParentVersion  string     `json:"parentVersion,omitempty"` // Since v4.8.0
+	ProjectTags    []Tag      `json:"projectTags,omitempty"`            // Since v4.12.0
+	ParentUUID     *uuid.UUID `json:"parentUUID,omitempty"`             // Since v4.8.0
+	ParentName     string     `json:"parentName,omitempty"`             // Since v4.8.0
+	ParentVersion  string     `json:"parentVersion,omitempty"`          // Since v4.8.0
+	IsLatest       *bool      `json:"isLatestProjectVersion,omitempty"` // Since v4.12.0
 	AutoCreate     bool       `json:"autoCreate"`
 	BOM            string     `json:"bom"`
 }
@@ -112,6 +115,16 @@ func (bs BOMService) PostBom(ctx context.Context, uploadReq BOMUploadRequest) (t
 	if uploadReq.ProjectVersion != "" {
 		params["projectVersion"] = append(params["projectVersion"], uploadReq.ProjectVersion)
 	}
+	if len(uploadReq.ProjectTags) > 0 {
+		tagNames := make([]string, len(uploadReq.ProjectTags))
+		for i := range uploadReq.ProjectTags {
+			tagNames[i] = uploadReq.ProjectTags[i].Name
+		}
+		params["projectTags"] = append(params["projectTags"], strings.Join(tagNames, ","))
+	}
+	if uploadReq.IsLatest != nil {
+		params["isLatest"] = append(params["isLatest"], strconv.FormatBool(*uploadReq.IsLatest))
+	}
 	if uploadReq.ParentUUID != nil {
 		params["parentUUID"] = append(params["parentUUID"], uploadReq.ParentUUID.String())
 	}
@@ -144,7 +157,14 @@ type bomProcessingResponse struct {
 	Processing bool `json:"processing"`
 }
 
+// IsBeingProcessed checks whether the BOM associated with a given token is still being processed.
+//
+// Deprecated: for server versions 4.11.0 and above, EventService.IsBeingProcessed should be used.
 func (bs BOMService) IsBeingProcessed(ctx context.Context, token BOMUploadToken) (bool, error) {
+	if bs.client.isServerVersionAtLeast("4.11.0") {
+		return bs.client.Event.IsBeingProcessed(ctx, EventToken(token))
+	}
+
 	req, err := bs.client.newRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v1/bom/token/%s", token))
 	if err != nil {
 		return false, err

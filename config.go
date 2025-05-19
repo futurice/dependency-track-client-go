@@ -19,43 +19,57 @@ const (
 )
 
 type ConfigProperty struct {
-	GroupName     string             `json:"groupName,omitempty"`
-	PropertyName  string             `json:"propertyName,omitempty"`
-	PropertyValue *string            `json:"propertyValue,omitempty"`
-	PropertyType  ConfigPropertyType `json:"propertyType,omitempty"`
-	Description   string             `json:"description,omitempty"`
+	GroupName   string				`json:"groupName"`
+	Name        string 				`json:"propertyName"`
+	Value       string 				`json:"propertyValue,omitempty"`
+	Type        ConfigPropertyType	`json:"propertyType"`
+	Description string 				`json:"description,omitempty"`
 }
 
 type ConfigService struct {
 	client *Client
 }
 
-func (ps ConfigService) GetAllConfigProperties(ctx context.Context) (cp []ConfigProperty, err error) {
-	req, err := ps.client.newRequest(ctx, http.MethodGet, "/api/v1/configProperty")
+func (cs ConfigService) GetAll(ctx context.Context) (cps []ConfigProperty, err error) {
+	req, err := cs.client.newRequest(ctx, http.MethodGet, "/api/v1/configProperty")
 	if err != nil {
 		return
 	}
-
-	_, err = ps.client.doRequest(req, &cp)
-	if err != nil {
-		return
-	}
-
+	_, err = cs.client.doRequest(req, &cps)
 	return
 }
 
-type SetConfigPropertyRequest struct {
-	GroupName     string `json:"groupName,omitempty"`
-	PropertyName  string `json:"propertyName,omitempty"`
-	PropertyValue string `json:"propertyValue,omitempty"`
-}
-
-func (ps ConfigService) SetConfigProperty(ctx context.Context, setConfigPropertyRequest SetConfigPropertyRequest) (p ConfigProperty, err error) {
-	req, err := ps.client.newRequest(ctx, http.MethodPost, "/api/v1/configProperty", withBody(setConfigPropertyRequest))
+func (cs ConfigService) Get(ctx context.Context, groupName, propertyName string) (cp ConfigProperty, err error) {
+	cps, err := cs.GetAll(ctx)
 	if err != nil {
 		return
 	}
+	for _, cp := range cps {
+		if cp.GroupName != groupName {
+			continue
+		}
+		if cp.Name != propertyName {
+			continue
+		}
+		return cp, nil
+	}
+	return
+}
 
-	_, err = ps.client.doRequest(req, &p)
+func (cs ConfigService) Update(ctx context.Context, config ConfigProperty) (cp ConfigProperty, err error) {
+	req, err := cs.client.newRequest(ctx, http.MethodPost, "/api/v1/configProperty", withBody(config))
+	if err != nil {
+		return
+	}
+	_, err = cs.client.doRequest(req, &cp)
+	return
+}
+
+func (cs ConfigService) UpdateAll(ctx context.Context, configs []ConfigProperty) (cps []ConfigProperty, err error) {
+	req, err := cs.client.newRequest(ctx, http.MethodPost, "/api/v1/configProperty/aggregate", withBody(configs))
+	if err != nil {
+		return
+	}
+	_, err = cs.client.doRequest(req, &cps)
 	return
 }

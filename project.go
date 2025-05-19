@@ -4,30 +4,33 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/google/uuid"
 )
 
 type Project struct {
-	UUID               uuid.UUID         `json:"uuid,omitempty"`
-	Author             string            `json:"author,omitempty"`
-	Publisher          string            `json:"publisher,omitempty"`
-	Group              string            `json:"group,omitempty"`
-	Name               string            `json:"name,omitempty"`
-	Description        string            `json:"description,omitempty"`
-	Version            string            `json:"version,omitempty"`
-	Classifier         string            `json:"classifier,omitempty"`
-	CPE                string            `json:"cpe,omitempty"`
-	PURL               string            `json:"purl,omitempty"`
-	SWIDTagID          string            `json:"swidTagId,omitempty"`
-	DirectDependencies string            `json:"directDependencies,omitempty"`
-	Properties         []ProjectProperty `json:"properties,omitempty"`
-	Tags               []Tag             `json:"tags,omitempty"`
-	Active             bool              `json:"active"`
-	Metrics            ProjectMetrics    `json:"metrics"`
-	ParentRef          *ParentRef        `json:"parent,omitempty"`
-	LastBOMImport      int               `json:"lastBomImport"`
+	UUID               uuid.UUID           `json:"uuid,omitempty"`
+	Author             string              `json:"author,omitempty"`
+	Publisher          string              `json:"publisher,omitempty"`
+	Group              string              `json:"group,omitempty"`
+	Name               string              `json:"name,omitempty"`
+	Description        string              `json:"description,omitempty"`
+	Version            string              `json:"version,omitempty"`
+	Classifier         string              `json:"classifier,omitempty"`
+	CPE                string              `json:"cpe,omitempty"`
+	PURL               string              `json:"purl,omitempty"`
+	SWIDTagID          string              `json:"swidTagId,omitempty"`
+	DirectDependencies string              `json:"directDependencies,omitempty"`
+	Properties         []ProjectProperty   `json:"properties,omitempty"`
+	Tags               []Tag               `json:"tags,omitempty"`
+	Active             bool                `json:"active"`
+	IsLatest           *bool               `json:"isLatest,omitempty"` // Since v4.12.0
+	Metrics            ProjectMetrics      `json:"metrics"`
+	ParentRef          *ParentRef          `json:"parent,omitempty"`
+	LastBOMImport      int                 `json:"lastBomImport"`
+	ExternalReferences []ExternalReference `json:"externalReferences,omitempty"`
 }
 
 type ParentRef struct {
@@ -60,6 +63,15 @@ func (ps ProjectService) GetAll(ctx context.Context, po PageOptions) (p Page[Pro
 	}
 
 	p.TotalCount = res.TotalCount
+	return
+}
+
+func (ps ProjectService) Latest(ctx context.Context, name string) (p Project, err error) {
+	req, err := ps.client.newRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v1/project/latest/%s", url.PathEscape(name)))
+	if err != nil {
+		return
+	}
+	_, err = ps.client.doRequest(req, &p)
 	return
 }
 
@@ -158,21 +170,33 @@ func (ps ProjectService) GetAllByTag(ctx context.Context, tag string, excludeIna
 }
 
 type ProjectCloneRequest struct {
-	ProjectUUID         uuid.UUID `json:"project"`
-	Version             string    `json:"version"`
-	IncludeAuditHistory bool      `json:"includeAuditHistory"`
-	IncludeComponents   bool      `json:"includeComponents"`
-	IncludeProperties   bool      `json:"includeProperties"`
-	IncludeServices     bool      `json:"includeServices"`
-	IncludeTags         bool      `json:"includeTags"`
+	ProjectUUID             uuid.UUID `json:"project"`
+	Version                 string    `json:"version"`
+	IncludeACL              bool      `json:"includeACL"`
+	IncludeAuditHistory     bool      `json:"includeAuditHistory"`
+	IncludeComponents       bool      `json:"includeComponents"`
+	IncludePolicyViolations *bool     `json:"includePolicyViolations,omitempty"` // Since v4.11.0
+	IncludeProperties       bool      `json:"includeProperties"`
+	IncludeServices         bool      `json:"includeServices"`
+	IncludeTags             bool      `json:"includeTags"`
+	MakeCloneLatest         *bool     `json:"makeCloneLatest,omitempty"` // Since v4.12.0
 }
 
-func (ps ProjectService) Clone(ctx context.Context, cloneReq ProjectCloneRequest) (err error) {
+// Clone triggers a cloning operation.
+// An EventToken is only returned for server versions 4.11.0 and newer.
+func (ps ProjectService) Clone(ctx context.Context, cloneReq ProjectCloneRequest) (token EventToken, err error) {
 	req, err := ps.client.newRequest(ctx, http.MethodPut, "/api/v1/project/clone", withBody(cloneReq))
 	if err != nil {
 		return
 	}
 
-	_, err = ps.client.doRequest(req, nil)
+	if ps.client.isServerVersionAtLeast("4.11.0") {
+		var tokenResponse EventTokenResponse
+		_, err = ps.client.doRequest(req, &tokenResponse)
+		token = tokenResponse.Token
+	} else {
+		_, err = ps.client.doRequest(req, nil)
+	}
+
 	return
 }

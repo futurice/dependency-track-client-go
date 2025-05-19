@@ -17,7 +17,13 @@ type Team struct {
 }
 
 type APIKey struct {
-	Key string `json:"key"`
+	Key       string `json:"key"`
+	Comment   string `json:"comment"`
+	Created   int    `json:"created"`
+	LastUsed  int    `json:"lastUsed"`
+	MaskedKey string `json:"maskedKey"`
+	PublicId  string `json:"publicId"` // Since 4.13
+	Legacy    bool   `json:"legacy"`   // Since 4.13
 }
 
 type TeamService struct {
@@ -49,20 +55,18 @@ func (ts TeamService) GetAll(ctx context.Context, po PageOptions) (p Page[Team],
 	return
 }
 
-func (ts TeamService) GenerateAPIKey(ctx context.Context, teamUUID uuid.UUID) (key string, err error) {
+func (ts TeamService) GenerateAPIKey(ctx context.Context, teamUUID uuid.UUID) (apiKey APIKey, err error) {
 	req, err := ts.client.newRequest(ctx, http.MethodPut, fmt.Sprintf("/api/v1/team/%s/key", teamUUID))
 	if err != nil {
 		return
 	}
 
-	var apiKey APIKey
 	_, err = ts.client.doRequest(req, &apiKey)
-	key = apiKey.Key
 	return
 }
 
-func (ts TeamService) RegenerateAPIKey(ctx context.Context, oldAPIKey string) (string, error) {
-	req, err := ts.client.newRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/team/key/%s", oldAPIKey))
+func (ts TeamService) RegenerateAPIKey(ctx context.Context, publicIdOrKey string) (apiKey APIKey, error) {
+	req, err := ts.client.newRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/team/key/%s", publicIdOrKey))
 	if err != nil {
 		return "", err
 	}
@@ -70,17 +74,42 @@ func (ts TeamService) RegenerateAPIKey(ctx context.Context, oldAPIKey string) (s
 	var newAPIKey APIKey
 	_, err = ts.client.doRequest(req, &newAPIKey)
 
-	return newAPIKey.Key, err
+	return newAPIKey, err
 }
 
-func (ts TeamService) DeleteAPIKey(ctx context.Context, apiKey string) (key string, err error) {
-	req, err := ts.client.newRequest(ctx, http.MethodDelete, fmt.Sprintf("/api/v1/team/key/%s", apiKey))
+func (ts TeamService) DeleteAPIKey(ctx context.Context, publicIdOrKey string) (err error) {
+	req, err := ts.client.newRequest(ctx, http.MethodDelete, fmt.Sprintf("/api/v1/team/key/%s", publicIdOrKey))
 	if err != nil {
 		return
 	}
-
 	_, err = ts.client.doRequest(req, nil)
 	return
+}
+
+func (ts TeamService) UpdateAPIKeyComment(ctx context.Context, publicIdOrKey, comment string) (commentOut string, err error) {
+	req, err := ts.client.newRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/team/key/%s/comment", publicIdOrKey), withBody(comment))
+	if err != nil {
+		return
+	}
+	var apiKey APIKey
+	_, err = ts.client.doRequest(req, &apiKey)
+	commentOut = apiKey.Comment
+	return
+}
+
+func (ts TeamService) GetAPIKeys(ctx context.Context, teamUUID uuid.UUID) (keys []APIKey, err error) {
+	keys = []APIKey{}
+	err = ForEach(
+		func(po PageOptions) (Page[Team], error) { return ts.GetAll(ctx, po) },
+		func(item Team) error {
+			if item.UUID != teamUUID {
+				return nil
+			}
+			keys = append(keys, item.APIKeys...)
+			return nil
+		},
+	)
+	return keys, err
 }
 
 func (ts TeamService) Create(ctx context.Context, team Team) (t Team, err error) {
