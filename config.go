@@ -11,7 +11,7 @@ type ConfigProperty struct {
 	GroupName   string `json:"groupName"`
 	Name        string `json:"propertyName"`
 	Value       string `json:"propertyValue,omitempty"`
-	Type        string `json:"propertyType"`
+	Type        string `json:"propertyType,omitempty"`
 	Description string `json:"description,omitempty"`
 }
 
