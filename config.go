@@ -7,23 +7,12 @@ import (
 
 type ConfigPropertyType string
 
-const (
-	ConfigPropertyTypeBoolean         ConfigPropertyType = "BOOLEAN"
-	ConfigPropertyTypeInteger         ConfigPropertyType = "INTEGER"
-	ConfigPropertyTypeNumber          ConfigPropertyType = "NUMBER"
-	ConfigPropertyTypeString          ConfigPropertyType = "STRING"
-	ConfigPropertyTypeEncryptedString ConfigPropertyType = "ENCRYPTEDSTRING"
-	ConfigPropertyTypeTimestamp       ConfigPropertyType = "TIMESTAMP"
-	ConfigPropertyTypeURL             ConfigPropertyType = "URL"
-	ConfigPropertyTypeUUID            ConfigPropertyType = "UUID"
-)
-
 type ConfigProperty struct {
-	GroupName   string				`json:"groupName"`
-	Name        string 				`json:"propertyName"`
-	Value       string 				`json:"propertyValue,omitempty"`
-	Type        ConfigPropertyType	`json:"propertyType"`
-	Description string 				`json:"description,omitempty"`
+	GroupName   string `json:"groupName"`
+	Name        string `json:"propertyName"`
+	Value       string `json:"propertyValue,omitempty"`
+	Type        string `json:"propertyType"`
+	Description string `json:"description,omitempty"`
 }
 
 type ConfigService struct {
