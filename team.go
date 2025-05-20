@@ -65,10 +65,10 @@ func (ts TeamService) GenerateAPIKey(ctx context.Context, teamUUID uuid.UUID) (a
 	return
 }
 
-func (ts TeamService) RegenerateAPIKey(ctx context.Context, publicIdOrKey string) (apiKey APIKey, error) {
+func (ts TeamService) RegenerateAPIKey(ctx context.Context, publicIdOrKey string) (apiKey APIKey, err error) {
 	req, err := ts.client.newRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/team/key/%s", publicIdOrKey))
 	if err != nil {
-		return "", err
+		return apiKey, err
 	}
 
 	var newAPIKey APIKey
