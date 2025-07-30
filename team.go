@@ -17,7 +17,11 @@ type Team struct {
 }
 
 type APIKey struct {
-	Key string `json:"key"`
+	PublicID  string `json:"publicId"`
+	Key       string `json:"key"`
+	MaskedKey string `json:"maskedKey"`
+	Legacy    bool   `json:"legacy"`
+	Created   uint   `json:"created"`
 }
 
 type TeamService struct {
@@ -49,7 +53,7 @@ func (ts TeamService) GetAll(ctx context.Context, po PageOptions) (p Page[Team],
 	return
 }
 
-func (ts TeamService) GenerateAPIKey(ctx context.Context, teamUUID uuid.UUID) (key string, err error) {
+func (ts TeamService) GenerateAPIKey(ctx context.Context, teamUUID uuid.UUID) (key APIKey, err error) {
 	req, err := ts.client.newRequest(ctx, http.MethodPut, fmt.Sprintf("/api/v1/team/%s/key", teamUUID))
 	if err != nil {
 		return
@@ -57,20 +61,20 @@ func (ts TeamService) GenerateAPIKey(ctx context.Context, teamUUID uuid.UUID) (k
 
 	var apiKey APIKey
 	_, err = ts.client.doRequest(req, &apiKey)
-	key = apiKey.Key
+	key = apiKey
 	return
 }
 
-func (ts TeamService) RegenerateAPIKey(ctx context.Context, oldAPIKey string) (string, error) {
+func (ts TeamService) RegenerateAPIKey(ctx context.Context, oldAPIKey string) (APIKey, error) {
 	req, err := ts.client.newRequest(ctx, http.MethodPost, fmt.Sprintf("/api/v1/team/key/%s", oldAPIKey))
 	if err != nil {
-		return "", err
+		return APIKey{}, err
 	}
 
 	var newAPIKey APIKey
 	_, err = ts.client.doRequest(req, &newAPIKey)
 
-	return newAPIKey.Key, err
+	return newAPIKey, err
 }
 
 func (ts TeamService) DeleteAPIKey(ctx context.Context, apiKey string) (key string, err error) {
