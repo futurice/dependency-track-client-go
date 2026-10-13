@@ -184,6 +184,7 @@ func (ns NotificationService) GetAllRules(ctx context.Context, po PageOptions) (
 }
 
 // CreateRule creates a rule, then updates it, because create drops most settings on both v4 and v5.
+// If the update fails, it returns the created rule with the error, so the caller can track or delete it.
 func (ns NotificationService) CreateRule(ctx context.Context, rule NotificationRule) (r NotificationRule, err error) {
 	v5, err := ns.client.isV5(ctx)
 	if err != nil {
@@ -215,7 +216,12 @@ func (ns NotificationService) CreateRule(ctx context.Context, rule NotificationR
 		// v5 fills in a default config on create and rejects an update without one.
 		rule.PublisherConfig = r.PublisherConfig
 	}
-	return ns.UpdateRule(ctx, rule)
+
+	updated, err := ns.UpdateRule(ctx, rule)
+	if err != nil {
+		return r, fmt.Errorf("rule %s created, but its follow-up update failed: %w", r.UUID, err)
+	}
+	return updated, nil
 }
 
 func (ns NotificationService) UpdateRule(ctx context.Context, rule NotificationRule) (r NotificationRule, err error) {

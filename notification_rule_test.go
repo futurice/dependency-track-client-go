@@ -76,6 +76,21 @@ func TestNotificationService_CreateRule(t *testing.T) {
 	})
 }
 
+func TestNotificationService_CreateRuleFailedUpdate(t *testing.T) {
+	client := newTestClient(t, "5.2.0")
+
+	httpmock.RegisterResponder(http.MethodPut, ruleURL, httpmock.NewStringResponder(http.StatusCreated, ruleResponse))
+	httpmock.RegisterResponder(http.MethodPost, ruleURL, httpmock.NewStringResponder(http.StatusBadRequest, `{"status":400}`))
+
+	rule, err := client.Notification.CreateRule(context.TODO(), testRule())
+	require.Error(t, err)
+
+	var apiErr *APIError
+	require.ErrorAs(t, err, &apiErr)
+	require.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
+	require.Equal(t, testRuleUUID, rule.UUID)
+}
+
 func TestNotificationService_CreateRuleKeepsDefaultPublisherConfig(t *testing.T) {
 	client := newTestClient(t, "5.2.0")
 
