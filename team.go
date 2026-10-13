@@ -2,6 +2,7 @@ package dtrack
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -55,6 +56,9 @@ func (ts TeamService) GetAll(ctx context.Context, po PageOptions) (p Page[Team],
 
 // GetAPIKeys searches the team list for a team's keys (v4's single-team GET omits them), or returns a 404 APIError.
 func (ts TeamService) GetAPIKeys(ctx context.Context, teamUUID uuid.UUID) (keys []APIKey, err error) {
+	// errTeamFound stops ForEach at the match, so it fetches no further pages.
+	errTeamFound := errors.New("team found")
+
 	found := false
 	err = ForEach(
 		func(po PageOptions) (Page[Team], error) { return ts.GetAll(ctx, po) },
@@ -62,11 +66,12 @@ func (ts TeamService) GetAPIKeys(ctx context.Context, teamUUID uuid.UUID) (keys 
 			if team.UUID == teamUUID {
 				found = true
 				keys = team.APIKeys
+				return errTeamFound
 			}
 			return nil
 		},
 	)
-	if err != nil {
+	if err != nil && !errors.Is(err, errTeamFound) {
 		return nil, err
 	}
 	if !found {

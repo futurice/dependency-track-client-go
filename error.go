@@ -23,11 +23,6 @@ func checkResponseForError(res *http.Response) error {
 		return nil
 	}
 
-	// v5 answers 304 Not Modified to an update that changes nothing, which is a success.
-	if res.StatusCode == http.StatusNotModified {
-		return nil
-	}
-
 	apiErr := &APIError{StatusCode: res.StatusCode}
 
 	body, err := io.ReadAll(res.Body)

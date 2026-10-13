@@ -57,6 +57,10 @@ type NotificationRule struct {
 	LogSuccessfulPublish bool                  `json:"logSuccessfulPublish"`
 	PublisherConfig      string                `json:"publisherConfig,omitempty"`
 	Projects             []Project             `json:"projects,omitempty"`
+	// Both versions overwrite the rule's tags on update, and v5 its filter expression too. Copy them from
+	// the current rule to keep them.
+	FilterExpression string `json:"filterExpression,omitempty"`
+	Tags             []Tag  `json:"tags"`
 }
 
 // createNotificationRuleRequestV5 is the v5 rule create body; v5 rejects any other field.
@@ -82,12 +86,18 @@ type updateNotificationRuleRequestV5 struct {
 	LogSuccessfulPublish bool      `json:"logSuccessfulPublish"`
 	NotifyOn             []string  `json:"notifyOn"`
 	PublisherConfig      string    `json:"publisherConfig,omitempty"`
+	FilterExpression     string    `json:"filterExpression,omitempty"`
+	Tags                 []Tag     `json:"tags"`
 }
 
 func newUpdateNotificationRuleRequestV5(rule NotificationRule) updateNotificationRuleRequestV5 {
 	notifyOn := rule.NotifyOn
 	if notifyOn == nil {
 		notifyOn = []string{}
+	}
+	tags := rule.Tags
+	if tags == nil {
+		tags = []Tag{}
 	}
 
 	return updateNotificationRuleRequestV5{
@@ -100,6 +110,8 @@ func newUpdateNotificationRuleRequestV5(rule NotificationRule) updateNotificatio
 		LogSuccessfulPublish: rule.LogSuccessfulPublish,
 		NotifyOn:             notifyOn,
 		PublisherConfig:      rule.PublisherConfig,
+		FilterExpression:     rule.FilterExpression,
+		Tags:                 tags,
 	}
 }
 
@@ -184,6 +196,7 @@ func (ns NotificationService) GetAllRules(ctx context.Context, po PageOptions) (
 }
 
 // CreateRule creates a rule, then updates it, because create drops most settings on both v4 and v5.
+// If the update fails, it returns the created rule with the error, so the caller can track or delete it.
 func (ns NotificationService) CreateRule(ctx context.Context, rule NotificationRule) (r NotificationRule, err error) {
 	v5, err := ns.client.isV5(ctx)
 	if err != nil {
@@ -215,7 +228,12 @@ func (ns NotificationService) CreateRule(ctx context.Context, rule NotificationR
 		// v5 fills in a default config on create and rejects an update without one.
 		rule.PublisherConfig = r.PublisherConfig
 	}
-	return ns.UpdateRule(ctx, rule)
+
+	updated, err := ns.UpdateRule(ctx, rule)
+	if err != nil {
+		return r, fmt.Errorf("rule %s created, but its follow-up update failed: %w", r.UUID, err)
+	}
+	return updated, nil
 }
 
 func (ns NotificationService) UpdateRule(ctx context.Context, rule NotificationRule) (r NotificationRule, err error) {
