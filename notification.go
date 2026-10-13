@@ -167,13 +167,19 @@ func (ns NotificationService) DeletePublisher(ctx context.Context, ruleUuid uuid
 	return
 }
 
-func (ns NotificationService) GetAllRules(ctx context.Context) (r []NotificationRule, err error) {
-	req, err := ns.client.newRequest(ctx, http.MethodGet, "/api/v1/notification/rule")
+// GetAllRules returns one page of rules; use FetchAll, since v5 caps unpaged lists at 100.
+func (ns NotificationService) GetAllRules(ctx context.Context, po PageOptions) (p Page[NotificationRule], err error) {
+	req, err := ns.client.newRequest(ctx, http.MethodGet, "/api/v1/notification/rule", withPageOptions(po))
 	if err != nil {
 		return
 	}
 
-	_, err = ns.client.doRequest(req, &r)
+	res, err := ns.client.doRequest(req, &p.Items)
+	if err != nil {
+		return
+	}
+
+	p.TotalCount = res.TotalCount
 	return
 }
 

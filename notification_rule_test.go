@@ -121,3 +121,23 @@ func TestNotificationService_UpdateRule(t *testing.T) {
 		require.Contains(t, updated[0], "publisher")
 	})
 }
+
+func TestNotificationService_GetAllRules(t *testing.T) {
+	client := newTestClient(t, "5.2.0")
+
+	httpmock.RegisterResponder(http.MethodGet, ruleURL,
+		func(req *http.Request) (*http.Response, error) {
+			require.Equal(t, "2", req.URL.Query().Get("pageNumber"))
+			require.Equal(t, "50", req.URL.Query().Get("pageSize"))
+
+			res := httpmock.NewStringResponse(http.StatusOK, `[`+ruleResponse+`]`)
+			res.Header.Set("X-Total-Count", "51")
+			return res, nil
+		})
+
+	page, err := client.Notification.GetAllRules(context.TODO(), PageOptions{PageNumber: 2, PageSize: 50})
+	require.NoError(t, err)
+	require.Equal(t, 51, page.TotalCount)
+	require.Len(t, page.Items, 1)
+	require.Equal(t, testRuleUUID, page.Items[0].UUID)
+}
