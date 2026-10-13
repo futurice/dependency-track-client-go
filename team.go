@@ -53,6 +53,31 @@ func (ts TeamService) GetAll(ctx context.Context, po PageOptions) (p Page[Team],
 	return
 }
 
+// GetAPIKeys searches the team list for a team's keys (v4's single-team GET omits them), or returns a 404 APIError.
+func (ts TeamService) GetAPIKeys(ctx context.Context, teamUUID uuid.UUID) (keys []APIKey, err error) {
+	found := false
+	err = ForEach(
+		func(po PageOptions) (Page[Team], error) { return ts.GetAll(ctx, po) },
+		func(team Team) error {
+			if team.UUID == teamUUID {
+				found = true
+				keys = team.APIKeys
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, &APIError{StatusCode: http.StatusNotFound, Message: fmt.Sprintf("team %s not found", teamUUID)}
+	}
+	if keys == nil {
+		keys = []APIKey{}
+	}
+	return keys, nil
+}
+
 func (ts TeamService) GenerateAPIKey(ctx context.Context, teamUUID uuid.UUID) (key APIKey, err error) {
 	req, err := ts.client.newRequest(ctx, http.MethodPut, fmt.Sprintf("/api/v1/team/%s/key", teamUUID))
 	if err != nil {
