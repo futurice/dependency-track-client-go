@@ -9,13 +9,40 @@ import (
 )
 
 type NotificationPublisher struct {
-	UUID             uuid.UUID `json:"uuid"`
-	Name             string    `json:"name"`
-	Description      string    `json:"description"`
-	PublisherClass   string    `json:"publisherClass"`
-	Template         string    `json:"template"`
-	TemplateMimeType string    `json:"templateMimeType"`
-	DefaultPublisher bool      `json:"defaultPublisher"`
+	UUID        uuid.UUID `json:"uuid"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	// PublisherClass is the publisher's Java class on Dependency-Track v4.
+	PublisherClass string `json:"publisherClass,omitempty"`
+	// ExtensionName replaces PublisherClass on Dependency-Track v5, e.g. "webhook" or "slack".
+	ExtensionName    string `json:"extensionName,omitempty"`
+	Template         string `json:"template"`
+	TemplateMimeType string `json:"templateMimeType"`
+	DefaultPublisher bool   `json:"defaultPublisher"`
+}
+
+// notificationPublisherRequestV5 is the v5 publisher create and update body, without publisherClass or defaultPublisher.
+type notificationPublisherRequestV5 struct {
+	UUID             *uuid.UUID `json:"uuid,omitempty"`
+	Name             string     `json:"name"`
+	Description      string     `json:"description,omitempty"`
+	ExtensionName    string     `json:"extensionName"`
+	Template         string     `json:"template,omitempty"`
+	TemplateMimeType string     `json:"templateMimeType,omitempty"`
+}
+
+func newNotificationPublisherRequestV5(publisher NotificationPublisher, withUUID bool) notificationPublisherRequestV5 {
+	req := notificationPublisherRequestV5{
+		Name:             publisher.Name,
+		Description:      publisher.Description,
+		ExtensionName:    publisher.ExtensionName,
+		Template:         publisher.Template,
+		TemplateMimeType: publisher.TemplateMimeType,
+	}
+	if withUUID {
+		req.UUID = &publisher.UUID
+	}
+	return req
 }
 
 type NotificationRule struct {
@@ -47,7 +74,17 @@ func (ns NotificationService) GetAllPublishers(ctx context.Context) (p []Notific
 }
 
 func (ns NotificationService) CreatePublisher(ctx context.Context, publisher NotificationPublisher) (r NotificationPublisher, err error) {
-	req, err := ns.client.newRequest(ctx, http.MethodPut, "/api/v1/notification/publisher", withBody(publisher))
+	v5, err := ns.client.isV5(ctx)
+	if err != nil {
+		return
+	}
+
+	var body interface{} = publisher
+	if v5 {
+		body = newNotificationPublisherRequestV5(publisher, false)
+	}
+
+	req, err := ns.client.newRequest(ctx, http.MethodPut, "/api/v1/notification/publisher", withBody(body))
 	if err != nil {
 		return
 	}
@@ -57,7 +94,17 @@ func (ns NotificationService) CreatePublisher(ctx context.Context, publisher Not
 }
 
 func (ns NotificationService) UpdatePublisher(ctx context.Context, publisher NotificationPublisher) (r NotificationPublisher, err error) {
-	req, err := ns.client.newRequest(ctx, http.MethodPost, "/api/v1/notification/publisher", withBody(publisher))
+	v5, err := ns.client.isV5(ctx)
+	if err != nil {
+		return
+	}
+
+	var body interface{} = publisher
+	if v5 {
+		body = newNotificationPublisherRequestV5(publisher, true)
+	}
+
+	req, err := ns.client.newRequest(ctx, http.MethodPost, "/api/v1/notification/publisher", withBody(body))
 	if err != nil {
 		return
 	}
