@@ -211,6 +211,10 @@ func (ns NotificationService) CreateRule(ctx context.Context, rule NotificationR
 	}
 
 	rule.UUID = r.UUID
+	if rule.PublisherConfig == "" {
+		// v5 fills in a default config on create and rejects an update without one.
+		rule.PublisherConfig = r.PublisherConfig
+	}
 	return ns.UpdateRule(ctx, rule)
 }
 

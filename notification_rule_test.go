@@ -76,6 +76,24 @@ func TestNotificationService_CreateRule(t *testing.T) {
 	})
 }
 
+func TestNotificationService_CreateRuleKeepsDefaultPublisherConfig(t *testing.T) {
+	client := newTestClient(t, "5.2.0")
+
+	createResponse := `{"uuid":"6b8e8f3c-3c39-4e4a-9a4f-6d0f1e3f6a11","name":"alerts","publisherConfig":"{\"destinationUrl\":\"https://example.com\"}"}`
+
+	var created, updated []map[string]interface{}
+	httpmock.RegisterResponder(http.MethodPut, ruleURL, captureJSON(t, &created, http.StatusCreated, createResponse))
+	httpmock.RegisterResponder(http.MethodPost, ruleURL, captureJSON(t, &updated, http.StatusOK, ruleResponse))
+
+	rule := testRule()
+	rule.PublisherConfig = ""
+	_, err := client.Notification.CreateRule(context.TODO(), rule)
+	require.NoError(t, err)
+
+	require.Len(t, updated, 1)
+	require.Equal(t, `{"destinationUrl":"https://example.com"}`, updated[0]["publisherConfig"])
+}
+
 func TestNotificationService_UpdateRule(t *testing.T) {
 	t.Run("v5 sends no publisher or projects", func(t *testing.T) {
 		client := newTestClient(t, "5.2.0")
