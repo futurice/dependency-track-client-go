@@ -59,6 +59,50 @@ type NotificationRule struct {
 	Projects             []Project             `json:"projects,omitempty"`
 }
 
+// createNotificationRuleRequestV5 is the v5 rule create body; v5 rejects any other field.
+type createNotificationRuleRequestV5 struct {
+	Name      string                `json:"name"`
+	Scope     string                `json:"scope"`
+	Level     string                `json:"level"`
+	Publisher notificationRuleRefV5 `json:"publisher"`
+}
+
+type notificationRuleRefV5 struct {
+	UUID uuid.UUID `json:"uuid"`
+}
+
+// updateNotificationRuleRequestV5 is the v5 rule update body, without publisher, projects or teams.
+type updateNotificationRuleRequestV5 struct {
+	UUID                 uuid.UUID `json:"uuid"`
+	Name                 string    `json:"name"`
+	Scope                string    `json:"scope"`
+	Level                string    `json:"level"`
+	Enabled              bool      `json:"enabled"`
+	NotifyChildren       bool      `json:"notifyChildren"`
+	LogSuccessfulPublish bool      `json:"logSuccessfulPublish"`
+	NotifyOn             []string  `json:"notifyOn"`
+	PublisherConfig      string    `json:"publisherConfig,omitempty"`
+}
+
+func newUpdateNotificationRuleRequestV5(rule NotificationRule) updateNotificationRuleRequestV5 {
+	notifyOn := rule.NotifyOn
+	if notifyOn == nil {
+		notifyOn = []string{}
+	}
+
+	return updateNotificationRuleRequestV5{
+		UUID:                 rule.UUID,
+		Name:                 rule.Name,
+		Scope:                rule.Scope,
+		Level:                rule.NotificationLevel,
+		Enabled:              rule.Enabled,
+		NotifyChildren:       rule.NotifyChildren,
+		LogSuccessfulPublish: rule.LogSuccessfulPublish,
+		NotifyOn:             notifyOn,
+		PublisherConfig:      rule.PublisherConfig,
+	}
+}
+
 type NotificationService struct {
 	client *Client
 }
@@ -133,18 +177,49 @@ func (ns NotificationService) GetAllRules(ctx context.Context) (r []Notification
 	return
 }
 
+// CreateRule creates a rule, then updates it, because create drops most settings on both v4 and v5.
 func (ns NotificationService) CreateRule(ctx context.Context, rule NotificationRule) (r NotificationRule, err error) {
-	req, err := ns.client.newRequest(ctx, http.MethodPut, "/api/v1/notification/rule", withBody(rule))
+	v5, err := ns.client.isV5(ctx)
+	if err != nil {
+		return
+	}
+
+	var body interface{} = rule
+	if v5 {
+		body = createNotificationRuleRequestV5{
+			Name:      rule.Name,
+			Scope:     rule.Scope,
+			Level:     rule.NotificationLevel,
+			Publisher: notificationRuleRefV5{UUID: rule.Publisher.UUID},
+		}
+	}
+
+	req, err := ns.client.newRequest(ctx, http.MethodPut, "/api/v1/notification/rule", withBody(body))
 	if err != nil {
 		return
 	}
 
 	_, err = ns.client.doRequest(req, &r)
-	return
+	if err != nil {
+		return
+	}
+
+	rule.UUID = r.UUID
+	return ns.UpdateRule(ctx, rule)
 }
 
 func (ns NotificationService) UpdateRule(ctx context.Context, rule NotificationRule) (r NotificationRule, err error) {
-	req, err := ns.client.newRequest(ctx, http.MethodPost, "/api/v1/notification/rule", withBody(rule))
+	v5, err := ns.client.isV5(ctx)
+	if err != nil {
+		return
+	}
+
+	var body interface{} = rule
+	if v5 {
+		body = newUpdateNotificationRuleRequestV5(rule)
+	}
+
+	req, err := ns.client.newRequest(ctx, http.MethodPost, "/api/v1/notification/rule", withBody(body))
 	if err != nil {
 		return
 	}
