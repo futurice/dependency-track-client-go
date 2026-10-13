@@ -334,7 +334,8 @@ func (c Client) doRequest(req *http.Request, v interface{}) (a apiResponse, err 
 		return
 	}
 
-	if v != nil {
+	// 204 and 304 carry no body. v5 answers 304 to an update that changes nothing.
+	if v != nil && res.StatusCode != http.StatusNoContent && res.StatusCode != http.StatusNotModified {
 		switch vt := v.(type) {
 		case *string:
 			if content, readErr := io.ReadAll(res.Body); readErr == nil {
