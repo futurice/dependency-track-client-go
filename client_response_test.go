@@ -27,3 +27,15 @@ func TestClient_doRequest_noBody(t *testing.T) {
 		})
 	}
 }
+
+func TestClient_newRequest_accept(t *testing.T) {
+	client := newTestClient(t, "5.2.0")
+
+	v1, err := client.newRequest(context.TODO(), http.MethodGet, "/api/v1/team")
+	require.NoError(t, err)
+	require.Equal(t, "application/json", v1.Header.Get("Accept"))
+
+	v2, err := client.newRequest(context.TODO(), http.MethodPost, "/api/v2/secrets")
+	require.NoError(t, err)
+	require.Equal(t, "application/json, application/problem+json", v2.Header.Get("Accept"))
+}

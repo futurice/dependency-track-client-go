@@ -174,6 +174,10 @@ func (c Client) newRequest(ctx context.Context, method, path string, options ...
 	}
 
 	req.Header.Set("Accept", "application/json")
+	if strings.HasPrefix(u.Path, "/api/v2/") {
+		// v2 answers 406 to writes unless the client also accepts its RFC 7807 error bodies.
+		req.Header.Set("Accept", "application/json, application/problem+json")
+	}
 	req.Header.Set("User-Agent", c.userAgent)
 
 	for _, option := range options {
