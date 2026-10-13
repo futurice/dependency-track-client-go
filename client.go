@@ -17,6 +17,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -32,6 +33,9 @@ type Client struct {
 	baseURL    *url.URL
 	userAgent  string
 	debug      bool
+
+	// serverVersion caches /api/version; a pointer so copies of Client share it.
+	serverVersion *serverVersionCache
 
 	About             AboutService
 	ACLMapping        ACLMappingService
@@ -73,8 +77,9 @@ func NewClient(baseURL string, options ...ClientOption) (*Client, error) {
 		httpClient: &http.Client{
 			Timeout: DefaultTimeout,
 		},
-		userAgent: DefaultUserAgent,
-		debug:     false,
+		userAgent:     DefaultUserAgent,
+		debug:         false,
+		serverVersion: &serverVersionCache{},
 	}
 
 	for _, option := range options {
@@ -108,6 +113,47 @@ func NewClient(baseURL string, options ...ClientOption) (*Client, error) {
 	client.Vulnerability = VulnerabilityService{client: &client}
 
 	return &client, nil
+}
+
+type serverVersionCache struct {
+	mu      sync.Mutex
+	version string
+}
+
+// ServerVersion returns the server's version from /api/version, fetched once and cached (see WithServerVersion).
+func (c Client) ServerVersion(ctx context.Context) (string, error) {
+	c.serverVersion.mu.Lock()
+	defer c.serverVersion.mu.Unlock()
+
+	if c.serverVersion.version != "" {
+		return c.serverVersion.version, nil
+	}
+
+	about, err := c.About.Get(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch server version: %w", err)
+	}
+	if about.Version == "" {
+		return "", fmt.Errorf("server reported an empty version")
+	}
+
+	c.serverVersion.version = about.Version
+	return about.Version, nil
+}
+
+// isV5 reports whether the server runs Dependency-Track 5.x or later, where several v1 request bodies differ.
+func (c Client) isV5(ctx context.Context) (bool, error) {
+	version, err := c.ServerVersion(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	major, err := strconv.Atoi(strings.SplitN(version, ".", 2)[0])
+	if err != nil {
+		return false, fmt.Errorf("failed to parse server version %q: %w", version, err)
+	}
+
+	return major >= 5, nil
 }
 
 // BaseURL provides a copy of the Dependency-Track base URL.
@@ -338,6 +384,17 @@ type ClientOption func(*Client) error
 func WithDebug(debug bool) ClientOption {
 	return func(c *Client) error {
 		c.debug = debug
+		return nil
+	}
+}
+
+// WithServerVersion sets the Dependency-Track server version, so the client doesn't fetch it from /api/version.
+func WithServerVersion(version string) ClientOption {
+	return func(c *Client) error {
+		if version == "" {
+			return fmt.Errorf("no server version provided")
+		}
+		c.serverVersion.version = version
 		return nil
 	}
 }
