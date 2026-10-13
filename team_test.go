@@ -51,6 +51,9 @@ func TestTeamService_GetAPIKeys(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, keys, 1)
 		require.Equal(t, "odt_abc", keys[0].PublicID)
+
+		// The match is on page 2 of 3, so page 3 is never fetched.
+		require.Equal(t, 2, httpmock.GetTotalCallCount())
 	})
 
 	t.Run("unknown team is a 404", func(t *testing.T) {
