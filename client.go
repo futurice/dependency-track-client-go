@@ -55,6 +55,7 @@ type Client struct {
 	Project           ProjectService
 	ProjectProperty   ProjectPropertyService
 	Repository        RepositoryService
+	Secret            SecretService
 	Team              TeamService
 	User              UserService
 	VEX               VEXService
@@ -106,6 +107,7 @@ func NewClient(baseURL string, options ...ClientOption) (*Client, error) {
 	client.Project = ProjectService{client: &client}
 	client.ProjectProperty = ProjectPropertyService{client: &client}
 	client.Repository = RepositoryService{client: &client}
+	client.Secret = SecretService{client: &client}
 	client.Team = TeamService{client: &client}
 	client.User = UserService{client: &client}
 	client.VEX = VEXService{client: &client}
