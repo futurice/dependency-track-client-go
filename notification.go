@@ -57,6 +57,10 @@ type NotificationRule struct {
 	LogSuccessfulPublish bool                  `json:"logSuccessfulPublish"`
 	PublisherConfig      string                `json:"publisherConfig,omitempty"`
 	Projects             []Project             `json:"projects,omitempty"`
+	// Both versions overwrite the rule's tags on update, and v5 its filter expression too. Copy them from
+	// the current rule to keep them.
+	FilterExpression string `json:"filterExpression,omitempty"`
+	Tags             []Tag  `json:"tags"`
 }
 
 // createNotificationRuleRequestV5 is the v5 rule create body; v5 rejects any other field.
@@ -82,12 +86,18 @@ type updateNotificationRuleRequestV5 struct {
 	LogSuccessfulPublish bool      `json:"logSuccessfulPublish"`
 	NotifyOn             []string  `json:"notifyOn"`
 	PublisherConfig      string    `json:"publisherConfig,omitempty"`
+	FilterExpression     string    `json:"filterExpression,omitempty"`
+	Tags                 []Tag     `json:"tags"`
 }
 
 func newUpdateNotificationRuleRequestV5(rule NotificationRule) updateNotificationRuleRequestV5 {
 	notifyOn := rule.NotifyOn
 	if notifyOn == nil {
 		notifyOn = []string{}
+	}
+	tags := rule.Tags
+	if tags == nil {
+		tags = []Tag{}
 	}
 
 	return updateNotificationRuleRequestV5{
@@ -100,6 +110,8 @@ func newUpdateNotificationRuleRequestV5(rule NotificationRule) updateNotificatio
 		LogSuccessfulPublish: rule.LogSuccessfulPublish,
 		NotifyOn:             notifyOn,
 		PublisherConfig:      rule.PublisherConfig,
+		FilterExpression:     rule.FilterExpression,
+		Tags:                 tags,
 	}
 }
 

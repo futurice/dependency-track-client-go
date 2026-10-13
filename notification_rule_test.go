@@ -125,8 +125,23 @@ func TestNotificationService_UpdateRule(t *testing.T) {
 		require.Len(t, updated, 1)
 		require.ElementsMatch(t, []string{
 			"uuid", "name", "scope", "level", "enabled", "notifyChildren",
-			"logSuccessfulPublish", "notifyOn", "publisherConfig",
+			"logSuccessfulPublish", "notifyOn", "publisherConfig", "tags",
 		}, keys(updated[0]))
+	})
+
+	t.Run("v5 sends the filter expression and tags it was given", func(t *testing.T) {
+		client := newTestClient(t, "5.2.0")
+
+		var updated []map[string]interface{}
+		httpmock.RegisterResponder(http.MethodPost, ruleURL, captureJSON(t, &updated, http.StatusOK, ruleResponse))
+
+		rule := testRule()
+		rule.FilterExpression = `subject.project.name == "x"`
+		rule.Tags = []Tag{{Name: "prod"}}
+		_, err := client.Notification.UpdateRule(context.TODO(), rule)
+		require.NoError(t, err)
+		require.Equal(t, `subject.project.name == "x"`, updated[0]["filterExpression"])
+		require.Equal(t, []interface{}{map[string]interface{}{"name": "prod"}}, updated[0]["tags"])
 	})
 
 	t.Run("v5 sends an empty notifyOn list, not null", func(t *testing.T) {
