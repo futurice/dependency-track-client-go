@@ -175,6 +175,7 @@ func TestNotificationService_GetAllRules(t *testing.T) {
 
 	httpmock.RegisterResponder(http.MethodGet, ruleURL,
 		func(req *http.Request) (*http.Response, error) {
+			require.False(t, req.URL.Query().Has("searchText"))
 			require.Equal(t, "2", req.URL.Query().Get("pageNumber"))
 			require.Equal(t, "50", req.URL.Query().Get("pageSize"))
 
@@ -186,6 +187,27 @@ func TestNotificationService_GetAllRules(t *testing.T) {
 	page, err := client.Notification.GetAllRules(context.TODO(), PageOptions{PageNumber: 2, PageSize: 50})
 	require.NoError(t, err)
 	require.Equal(t, 51, page.TotalCount)
+	require.Len(t, page.Items, 1)
+	require.Equal(t, testRuleUUID, page.Items[0].UUID)
+}
+
+func TestNotificationService_SearchRules(t *testing.T) {
+	client := newTestClient(t, "4.14.5")
+
+	httpmock.RegisterResponder(http.MethodGet, ruleURL,
+		func(req *http.Request) (*http.Response, error) {
+			require.Equal(t, `alerts "prod" & 100%`, req.URL.Query().Get("searchText"))
+			require.Equal(t, "1", req.URL.Query().Get("pageNumber"))
+			require.Equal(t, "100", req.URL.Query().Get("pageSize"))
+
+			res := httpmock.NewStringResponse(http.StatusOK, `[`+ruleResponse+`]`)
+			res.Header.Set("X-Total-Count", "1")
+			return res, nil
+		})
+
+	page, err := client.Notification.SearchRules(context.TODO(), `alerts "prod" & 100%`, PageOptions{PageNumber: 1, PageSize: 100})
+	require.NoError(t, err)
+	require.Equal(t, 1, page.TotalCount)
 	require.Len(t, page.Items, 1)
 	require.Equal(t, testRuleUUID, page.Items[0].UUID)
 }
