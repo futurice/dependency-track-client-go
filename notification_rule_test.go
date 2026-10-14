@@ -175,6 +175,7 @@ func TestNotificationService_GetAllRules(t *testing.T) {
 
 	httpmock.RegisterResponder(http.MethodGet, ruleURL,
 		func(req *http.Request) (*http.Response, error) {
+			require.False(t, req.URL.Query().Has("searchText"))
 			require.Equal(t, "2", req.URL.Query().Get("pageNumber"))
 			require.Equal(t, "50", req.URL.Query().Get("pageSize"))
 
