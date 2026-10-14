@@ -181,7 +181,17 @@ func (ns NotificationService) DeletePublisher(ctx context.Context, ruleUuid uuid
 
 // GetAllRules returns one page of rules; use FetchAll, since v5 caps unpaged lists at 100.
 func (ns NotificationService) GetAllRules(ctx context.Context, po PageOptions) (p Page[NotificationRule], err error) {
-	req, err := ns.client.newRequest(ctx, http.MethodGet, "/api/v1/notification/rule", withPageOptions(po))
+	return ns.getRules(ctx, nil, po)
+}
+
+// SearchRules lists the rules whose name contains searchText, ignoring case. Neither v4 nor v5 can fetch a
+// single rule, so searching by name and then matching the UUID avoids listing every rule to find one.
+func (ns NotificationService) SearchRules(ctx context.Context, searchText string, po PageOptions) (p Page[NotificationRule], err error) {
+	return ns.getRules(ctx, map[string]string{"searchText": searchText}, po)
+}
+
+func (ns NotificationService) getRules(ctx context.Context, params map[string]string, po PageOptions) (p Page[NotificationRule], err error) {
+	req, err := ns.client.newRequest(ctx, http.MethodGet, "/api/v1/notification/rule", withParams(params), withPageOptions(po))
 	if err != nil {
 		return
 	}
